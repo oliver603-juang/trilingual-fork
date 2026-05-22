@@ -1,0 +1,14 @@
+{
+  "name": "九州自駕生存日語 300句",
+  "short_name": "九州日語",
+  "description": "2026暑假九州自駕親子遊 終極生存日語300句",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "orientation": "portrait",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

@@ -84,6 +84,10 @@ html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC','Noto Sans JP',
 .block .word{padding:6px 10px;border-radius:8px;font-size:15px;font-weight:700;position:relative;cursor:pointer}
 .block .role{font-size:9px;opacity:.7}
 .block:active .word{transform:scale(.9);opacity:.8}
+.block{position:relative}
+.block .num-badge{position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.15);color:var(--dim);font-size:9px;display:flex;align-items:center;justify-content:center;pointer-events:none;border:1px solid rgba(255,255,255,.1)}
+.flash-block .word{animation:blockFlash .4s ease}
+@keyframes blockFlash{0%{transform:scale(1)}20%{transform:scale(1.15)}60%{transform:scale(.95)}100%{transform:scale(1)}}
 .block .furigana{font-size:9px;color:var(--dim);line-height:1}
 .jp-full{font-size:13px;color:var(--dim);padding-top:6px;border-top:1px solid #ffffff08;margin-top:4px}
 
@@ -426,12 +430,13 @@ function render(){
   
   // Build blocks HTML
   let blocksHtml='';
-  s.jp.blocks.forEach(b=>{
+  s.jp.blocks.forEach((b,bi)=>{
     const word=b[0], role=b[1];
     const color=RC[role]||'#888';
     const fg=role==='修飾'||role==='時間'?'#111':'#fff';
     const furi=addFurigana(word);
-    blocksHtml+=`<div class="block" onclick="speakWord('${word.replace(/'/g,"\\'")}')">
+    blocksHtml+=`<div class="block" onclick="speakBlock(${bi})">
+      <span class="num-badge">${bi+1}</span>
       ${furi?`<span class="furigana">${furi}</span>`:''}
       <span class="word" style="background:${color};color:${fg}">${word}</span>
       <span class="role" style="color:${color}">${role}</span>
@@ -612,10 +617,15 @@ function setupSwipe(){
 // === KEYBOARD ===
 function setupKeys(){
   document.addEventListener('keydown',e=>{
-    // Skip if BT remote already handled this key (captured in btGlobalKeyHandler)
-    // Check if this key is in btMap — if so, btGlobalKeyHandler already handled it
+    // Skip if BT remote already handled this key
     for(const m of Object.values(btMap)){
       if(m.keyCode===e.keyCode||(m.code&&m.code===e.code)) return;
+    }
+    // Number keys 1-9: speak individual blocks
+    if(e.key>='1' && e.key<='9' && !e.ctrlKey && !e.altKey && !e.metaKey){
+      e.preventDefault();
+      speakBlock(parseInt(e.key)-1);
+      return;
     }
     // Default keyboard controls (fallback)
     if(e.key==='ArrowRight') go(1);
@@ -947,6 +957,21 @@ btHI.setAttribute('spellcheck','false');
 btHI.style.cssText = 'position:fixed;bottom:-100px;left:-100px;width:1px;height:1px;opacity:0;pointer-events:none;';
 document.body.appendChild(btHI);
 btHI.addEventListener('input', btInputHandler);
+
+// Speak block by index (0-based), with visual flash
+function speakBlock(idx){
+  if(filtered.length===0) return;
+  const s=filtered[ci];
+  if(!s.jp?.blocks || idx>=s.jp.blocks.length) return;
+  const word=s.jp.blocks[idx][0];
+  speakWord(word);
+  // Flash the block visually
+  const blocks=document.querySelectorAll('#cardArea .block');
+  if(blocks[idx]){
+    blocks[idx].classList.add('flash-block');
+    setTimeout(()=>blocks[idx].classList.remove('flash-block'),400);
+  }
+}
 
 // Speak a single word/block
 function speakWord(text){

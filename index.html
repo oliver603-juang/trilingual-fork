@@ -132,6 +132,20 @@ html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC','Noto Sans JP',
 .vocab-item .jp{color:var(--text)}
 .vocab-item .cn{color:var(--dim);font-size:11px}
 
+
+/* Immersive mode */
+.app.immersive .hdr,
+.app.immersive .accounts,
+.app.immersive .tier-bar,
+.app.immersive .cat-bar,
+.app.immersive .trip-info,
+.app.immersive .emergency-bar{display:none!important}
+.app.immersive .main{padding:8px 12px}
+.app.immersive .nav{margin-bottom:8px}
+.immerse-btn{position:fixed;bottom:52px;right:12px;z-index:50;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);color:var(--dim);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);transition:.2s}
+.immerse-btn:active{transform:scale(.9)}
+.app.immersive .immerse-btn{background:var(--accent);color:#fff;border-color:var(--accent)}
+
 /* Animations */
 @keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
 @keyframes slideOut{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
@@ -199,6 +213,7 @@ html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC','Noto Sans JP',
   <div class="trip-info">
     🗓 2026/8/7-11 ✈️ 星宇JX840 🚗 7人座 👨‍👩‍👧‍👦 2大2小 | 🚫 麩質·味精·豬·大豆·乳·蛋
   </div>
+  <button class="immerse-btn" id="immerseBtn" onclick="toggleImmersive()" title="沉浸模式">🔭</button>
 </div>
 
 <!-- Modals -->
@@ -583,6 +598,17 @@ function resetProgress(){
     render();
     closeModal('settingsModal');
   }
+}
+
+
+// === IMMERSIVE MODE ===
+function toggleImmersive(){
+  const app=document.getElementById('app');
+  app.classList.toggle('immersive');
+  const btn=document.getElementById('immerseBtn');
+  const isOn=app.classList.contains('immersive');
+  btn.textContent=isOn?'🔙':'🔭';
+  btn.title=isOn?'退出沉浸模式':'沉浸模式';
 }
 
 // === START ===

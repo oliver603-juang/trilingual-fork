@@ -565,9 +565,24 @@ function setupSwipe(){
 // === KEYBOARD ===
 function setupKeys(){
   document.addEventListener('keydown',e=>{
+    // Arrow keys
     if(e.key==='ArrowRight') go(1);
     else if(e.key==='ArrowLeft') go(-1);
     else if(e.key===' '){ e.preventDefault(); speak(); }
+    // Bluetooth presenter remote: PageDown=next, PageUp=prev, F5/Escape=speak
+    else if(e.key==='PageDown'){ e.preventDefault(); go(1); }
+    else if(e.key==='PageUp'){ e.preventDefault(); go(-1); }
+    else if(e.key==='F5'){ e.preventDefault(); speak(); }
+    // Escape: if immersive, exit; if modal open, close; otherwise speak
+    else if(e.key==='Escape'){
+      const modal=document.querySelector('.modal-overlay.show');
+      if(modal){ modal.classList.remove('show'); }
+      else if(document.getElementById('app').classList.contains('immersive')){ toggleImmersive(); }
+      else { speak(); }
+    }
+    // Volume keys on some Android devices (KeyB/F15 fallback)
+    else if(e.keyCode===175||e.key==='AudioVolumeUp'){ e.preventDefault(); go(1); }
+    else if(e.keyCode===174||e.key==='AudioVolumeDown'){ e.preventDefault(); go(-1); }
   });
 }
 

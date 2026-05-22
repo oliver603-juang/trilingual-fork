@@ -81,8 +81,9 @@ html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC','Noto Sans JP',
 .blocks-box .label{font-size:11px;color:var(--dim);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .blocks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .block{display:flex;flex-direction:column;align-items:center;gap:2px}
-.block .word{padding:6px 10px;border-radius:8px;font-size:15px;font-weight:700;position:relative}
+.block .word{padding:6px 10px;border-radius:8px;font-size:15px;font-weight:700;position:relative;cursor:pointer}
 .block .role{font-size:9px;opacity:.7}
+.block:active .word{transform:scale(.9);opacity:.8}
 .block .furigana{font-size:9px;color:var(--dim);line-height:1}
 .jp-full{font-size:13px;color:var(--dim);padding-top:6px;border-top:1px solid #ffffff08;margin-top:4px}
 
@@ -430,7 +431,7 @@ function render(){
     const color=RC[role]||'#888';
     const fg=role==='修飾'||role==='時間'?'#111':'#fff';
     const furi=addFurigana(word);
-    blocksHtml+=`<div class="block">
+    blocksHtml+=`<div class="block" onclick="speakWord('${word.replace(/'/g,"\\'")}')">
       ${furi?`<span class="furigana">${furi}</span>`:''}
       <span class="word" style="background:${color};color:${fg}">${word}</span>
       <span class="role" style="color:${color}">${role}</span>
@@ -946,6 +947,16 @@ btHI.setAttribute('spellcheck','false');
 btHI.style.cssText = 'position:fixed;bottom:-100px;left:-100px;width:1px;height:1px;opacity:0;pointer-events:none;';
 document.body.appendChild(btHI);
 btHI.addEventListener('input', btInputHandler);
+
+// Speak a single word/block
+function speakWord(text){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ja-JP';
+  if(jaVoice) u.voice=jaVoice;
+  u.rate=parseFloat(document.getElementById('ttsSpeed')?.value||0.8);
+  speechSynthesis.speak(u);
+}
 
 btLoadMap();
 

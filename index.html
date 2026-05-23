@@ -152,19 +152,7 @@ html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC','Noto Sans JP',
 .app.immersive .immerse-btn{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 
-/* BT Remote Config */
-.bt-section{margin-top:16px;padding-top:12px;border-top:1px solid #ffffff15}
-.bt-section h3{font-size:13px;margin-bottom:10px;color:var(--accent)}
-.bt-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.bt-label{font-size:13px;min-width:70px;color:var(--text)}
-.bt-key-btn{flex:1;padding:8px 12px;border-radius:8px;border:2px dashed #ffffff30;background:var(--surface);color:var(--dim);font-size:13px;cursor:pointer;text-align:center;transition:.2s}
-.bt-key-btn:focus,.bt-key-btn.listening{border-color:var(--accent);color:var(--accent);animation:pulse 1s infinite}
-.bt-key-btn.bound{border-style:solid;border-color:var(--tier4);color:var(--tier4)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.bt-clear{background:none;border:none;color:var(--dim);font-size:16px;cursor:pointer;padding:4px}
-.bt-hint{font-size:11px;color:var(--dim);margin-bottom:12px;line-height:1.5}
-.bt-test{margin-top:8px;padding:8px;background:var(--surface);border-radius:8px;font-size:12px;color:var(--dim);min-height:36px;display:flex;align-items:center;justify-content:center}
-.bt-test.flash{color:var(--accent);font-weight:700}
+
 
 
 /* Toast */
@@ -267,31 +255,7 @@ html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC','Noto Sans JP',
       </label>
     </div>
 
-    <div class="bt-section">
-      <h3>🎮 藍牙簡報器 / 遙控器設定</h3>
-      <div class="bt-hint">點擊下方按鈕 → 按簡報器對應鍵 → 自動綁定<br>💡 Android：按了沒反應請長按或多按幾次，系統會嘗試多種偵測方式</div>
-      <div class="bt-row">
-        <span class="bt-label">▶ 下一句</span>
-        <button class="bt-key-btn" id="btNext" onclick="btListen('next')">未設定</button>
-        <button class="bt-clear" onclick="btClear('next')" title="清除">✕</button>
-      </div>
-      <div class="bt-row">
-        <span class="bt-label">◀ 上一句</span>
-        <button class="bt-key-btn" id="btPrev" onclick="btListen('prev')">未設定</button>
-        <button class="bt-clear" onclick="btClear('prev')" title="清除">✕</button>
-      </div>
-      <div class="bt-row">
-        <span class="bt-label">🔊 播放</span>
-        <button class="bt-key-btn" id="btSpeak" onclick="btListen('speak')">未設定</button>
-        <button class="bt-clear" onclick="btClear('speak')" title="清除">✕</button>
-      </div>
-      <div class="bt-row">
-        <span class="bt-label">🔭 沉浸</span>
-        <button class="bt-key-btn" id="btImmerse" onclick="btListen('immerse')">未設定</button>
-        <button class="bt-clear" onclick="btClear('immerse')" title="清除">✕</button>
-      </div>
-      <div class="bt-test" id="btTest">按任意鍵測試… (🔑=keydown 🔑↑=keyup 📝=input)</div>
-    </div>
+    
     <button class="close-btn" onclick="closeModal('settingsModal')">關閉</button>
   </div>
 </div>
@@ -617,10 +581,6 @@ function setupSwipe(){
 // === KEYBOARD ===
 function setupKeys(){
   document.addEventListener('keydown',e=>{
-    // Skip if BT remote already handled this key
-    for(const m of Object.values(btMap)){
-      if(m.keyCode===e.keyCode||(m.code&&m.code===e.code)) return;
-    }
     // Number keys 1-9: speak individual blocks
     if(e.key>='1' && e.key<='9' && !e.ctrlKey && !e.altKey && !e.metaKey){
       e.preventDefault();
@@ -719,244 +679,18 @@ function showToast(msg){
 }
 
 
-// === BLUETOOTH REMOTE MAPPING ===
-// Android Chrome + BT HID problem:
-// - Virtual keyboard sends keyCode=229, key="Unidentified" for most keys
-// - Physical BT keyboards SHOULD send real keyCodes, but some Android IME intercepts them
-// - Solution: capture ALL event types (keydown, keyup) + use a hidden input trick
-//   to also catch beforeinput/input events as fallback
 
-let btMap = {}; // {action: {key, code, keyCode, label, type}}
-let btListening = null;
-let btLastEvent = null; // for debug display
 
-function btLoadMap() {
-  try { btMap = JSON.parse(localStorage.getItem('ks_btmap')) || {}; } catch(e) { btMap = {}; }
-  btUpdateUI();
+
+// Speak a single word/block
+function speakWord(text){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ja-JP';
+  if(jaVoice) u.voice=jaVoice;
+  u.rate=parseFloat(document.getElementById('ttsSpeed')?.value||0.8);
+  speechSynthesis.speak(u);
 }
-function btSaveMap() {
-  localStorage.setItem('ks_btmap', JSON.stringify(btMap));
-}
-
-function btListen(action) {
-  document.querySelectorAll('.bt-key-btn').forEach(b => b.classList.remove('listening'));
-  btListening = action;
-  const btn = document.getElementById('bt' + action.charAt(0).toUpperCase() + action.slice(1));
-  if (btn) {
-    btn.classList.add('listening');
-    btn.textContent = '⏳ 按簡報器鍵…';
-  }
-  // Focus the hidden input to help Android capture BT keys
-  const hi = document.getElementById('btHiddenInput');
-  if (hi) { hi.value = ''; hi.focus(); }
-}
-
-function btClear(action) {
-  delete btMap[action];
-  btSaveMap();
-  btUpdateUI();
-}
-
-function btUpdateUI() {
-  const names = {next:'btNext', prev:'btPrev', speak:'btSpeak', immerse:'btImmerse'};
-  for (const [action, elId] of Object.entries(names)) {
-    const btn = document.getElementById(elId);
-    if (!btn) continue;
-    const m = btMap[action];
-    if (m) {
-      btn.textContent = m.label;
-      btn.classList.remove('listening');
-      btn.classList.add('bound');
-    } else {
-      btn.textContent = '點擊綁定';
-      btn.classList.remove('bound', 'listening');
-    }
-  }
-}
-
-function btMakeFingerprint(e) {
-  // Create a unique fingerprint from whatever info the event provides
-  // On Android, keyCode might be 229 but key/code might still differ per button
-  return e.type + '|' + (e.key||'') + '|' + (e.code||'') + '|' + (e.keyCode||0);
-}
-
-function btKeyLabel(e) {
-  let parts = [];
-  const k = e.key || '';
-  const kc = e.keyCode || 0;
-  if (k === 'Unidentified' || k === 'Process' || kc === 229) {
-    // Android IME swallowed the real key — use code or fallback
-    if (e.code && e.code !== '') parts.push(e.code);
-    else parts.push('按鍵#' + (e._seq || '?'));
-    parts.push('(type:' + e.type + ')');
-  } else {
-    if (k === ' ') parts.push('Space');
-    else if (k.length === 1) parts.push(k.toUpperCase());
-    else parts.push(k);
-    parts.push('(' + kc + ')');
-  }
-  return parts.join(' ');
-}
-
-// Sequence counter for unidentified keys — each physical button
-// will produce a consistent keyup pattern we can differentiate
-let btSeqCounter = 0;
-
-function btShowDebug(e, source) {
-  const testEl = document.getElementById('btTest');
-  if (!testEl) return;
-  if (!document.getElementById('settingsModal')?.classList.contains('show')) return;
-  const info = [
-    source,
-    'key="' + (e.key||'') + '"',
-    'code="' + (e.code||'') + '"',
-    'kC=' + (e.keyCode||0),
-    'type=' + e.type
-  ].join(' ');
-  testEl.textContent = info;
-  testEl.classList.add('flash');
-  setTimeout(() => testEl.classList.remove('flash'), 400);
-}
-
-// Strategy 1: keydown handler (works on desktop + some BT HID on Android)
-function btKeydownHandler(e) {
-  btShowDebug(e, '🔑');
-
-  if (btListening) {
-    e.preventDefault();
-    e.stopPropagation();
-    const fp = btMakeFingerprint(e);
-    btMap[btListening] = {
-      key: e.key, code: e.code, keyCode: e.keyCode,
-      fingerprint: fp,
-      label: btKeyLabel(e),
-      type: 'keydown'
-    };
-    btSaveMap();
-    btListening = null;
-    btUpdateUI();
-    // Unfocus hidden input
-    document.getElementById('btHiddenInput')?.blur();
-    return;
-  }
-
-  // Match against saved bindings
-  const fp = btMakeFingerprint(e);
-  for (const [action, m] of Object.entries(btMap)) {
-    let match = false;
-    if (m.fingerprint && m.fingerprint === fp) match = true;
-    else if (m.keyCode && m.keyCode !== 229 && m.keyCode === e.keyCode) match = true;
-    else if (m.code && m.code !== '' && m.code === e.code) match = true;
-    if (match) {
-      e.preventDefault();
-      e.stopPropagation();
-      btExecAction(action);
-      return;
-    }
-  }
-}
-
-// Strategy 2: keyup handler (some BT remotes only fire keyup reliably on Android)
-function btKeyupHandler(e) {
-  btShowDebug(e, '🔑↑');
-
-  if (btListening) {
-    e.preventDefault();
-    e.stopPropagation();
-    const fp = 'keyup|' + (e.key||'') + '|' + (e.code||'') + '|' + (e.keyCode||0);
-    btMap[btListening] = {
-      key: e.key, code: e.code, keyCode: e.keyCode,
-      fingerprint: fp,
-      label: btKeyLabel(e) + '↑',
-      type: 'keyup'
-    };
-    btSaveMap();
-    btListening = null;
-    btUpdateUI();
-    document.getElementById('btHiddenInput')?.blur();
-    return;
-  }
-
-  // Match keyup bindings only
-  const fp = 'keyup|' + (e.key||'') + '|' + (e.code||'') + '|' + (e.keyCode||0);
-  for (const [action, m] of Object.entries(btMap)) {
-    if (m.type === 'keyup' && m.fingerprint === fp) {
-      e.preventDefault();
-      e.stopPropagation();
-      btExecAction(action);
-      return;
-    }
-  }
-}
-
-// Strategy 3: hidden input — catches BT keys that Android IME swallows
-// The hidden <input> will receive character input even when keydown fails
-let btHiddenLastVal = '';
-function btInputHandler(e) {
-  const hi = document.getElementById('btHiddenInput');
-  if (!hi) return;
-  const newVal = hi.value;
-  const diff = newVal.replace(btHiddenLastVal, '');
-  btHiddenLastVal = newVal;
-
-  if (!diff) return;
-
-  btShowDebug({key: diff, code: '', keyCode: 0, type: 'input'}, '📝');
-
-  if (btListening) {
-    const fp = 'input|' + diff;
-    btMap[btListening] = {
-      key: diff, code: '', keyCode: 0,
-      fingerprint: fp,
-      label: '字元 "' + diff + '"',
-      type: 'input',
-      inputChar: diff
-    };
-    btSaveMap();
-    btListening = null;
-    btUpdateUI();
-    hi.value = '';
-    btHiddenLastVal = '';
-    hi.blur();
-    return;
-  }
-
-  // Match input bindings
-  const fp = 'input|' + diff;
-  for (const [action, m] of Object.entries(btMap)) {
-    if (m.type === 'input' && m.fingerprint === fp) {
-      btExecAction(action);
-      hi.value = '';
-      btHiddenLastVal = '';
-      return;
-    }
-  }
-  // Clean up
-  hi.value = '';
-  btHiddenLastVal = '';
-}
-
-function btExecAction(action) {
-  if (action === 'next') go(1);
-  else if (action === 'prev') go(-1);
-  else if (action === 'speak') speak();
-  else if (action === 'immerse') toggleImmersive();
-}
-
-// Register all strategies
-document.addEventListener('keydown', btKeydownHandler, true);
-document.addEventListener('keyup', btKeyupHandler, true);
-
-// Create hidden input for Strategy 3
-const btHI = document.createElement('input');
-btHI.id = 'btHiddenInput';
-btHI.setAttribute('autocomplete','off');
-btHI.setAttribute('autocorrect','off');
-btHI.setAttribute('autocapitalize','off');
-btHI.setAttribute('spellcheck','false');
-btHI.style.cssText = 'position:fixed;bottom:-100px;left:-100px;width:1px;height:1px;opacity:0;pointer-events:none;';
-document.body.appendChild(btHI);
-btHI.addEventListener('input', btInputHandler);
 
 // Speak block by index (0-based), with visual flash
 function speakBlock(idx){
@@ -972,18 +706,6 @@ function speakBlock(idx){
     setTimeout(()=>blocks[idx].classList.remove('flash-block'),400);
   }
 }
-
-// Speak a single word/block
-function speakWord(text){
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='ja-JP';
-  if(jaVoice) u.voice=jaVoice;
-  u.rate=parseFloat(document.getElementById('ttsSpeed')?.value||0.8);
-  speechSynthesis.speak(u);
-}
-
-btLoadMap();
 
 // === START ===
 init();

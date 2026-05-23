@@ -756,10 +756,10 @@ function speakBlock(idx){
   const word=blocks[idx][0];
   speakWord(word);
   // Flash the block visually
-  const blocks=document.querySelectorAll('#cardArea .block');
-  if(blocks[idx]){
-    blocks[idx].classList.add('flash-block');
-    setTimeout(()=>blocks[idx].classList.remove('flash-block'),400);
+  const blockEls=document.querySelectorAll('#cardArea .block');
+  if(blockEls[idx]){
+    blockEls[idx].classList.add('flash-block');
+    setTimeout(()=>blockEls[idx].classList.remove('flash-block'),400);
   }
 }
 
